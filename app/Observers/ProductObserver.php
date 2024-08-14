@@ -14,6 +14,7 @@ class ProductObserver
             'name' => $product->name,
             'detail' => $product->detail
         ]);
+
     }
 
     public function updated(Product $product): void
