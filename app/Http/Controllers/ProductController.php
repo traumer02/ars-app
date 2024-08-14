@@ -8,13 +8,15 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 class ProductController extends Controller
 {
     public function index(): JsonResponse
     {
-        $products = Product::all();
+        $products = Product::where('user_id', Auth::id())->get();
 
         return $this->sendResponse(ProductResource::collection($products), 'Products retrieved successfully.');
     }
@@ -22,6 +24,9 @@ class ProductController extends Controller
     public function store(Request $request): JsonResponse
     {
         $input = $request->all();
+        $input['user_id'] = Auth::id();
+
+
 
         $validator = Validator::make($input, [
             'name' => 'required',
@@ -38,7 +43,7 @@ class ProductController extends Controller
 
     public function show($id): JsonResponse
     {
-        $product = Product::find($id);
+        $product = Product::where('id', $id)->where('user_id' , Auth::id())->first();
 
         if(is_null($product)){
             return $this->sendError('Product not found.');
@@ -49,10 +54,14 @@ class ProductController extends Controller
 
     public function update(Request $request , Product $product): JsonResponse
     {
+        if ($product->user_id != Auth::id()) {
+            return $this->sendError('Unauthorized.', 'You are not allowed to update this product.');
+        }
+
         $input = $request->all();
         $validator = Validator::make($input, [
             'name' => 'required',
-            'detail' => 'required'
+            'detail' => 'required',
         ]);
 
         if($validator->fails()){
@@ -64,12 +73,17 @@ class ProductController extends Controller
         $product->save();
 
         return $this->sendResponse(new ProductResource($product),'Product updated successfully.');
+
     }
 
     public function destroy(Product $product): JsonResponse
     {
+        if($product->user_id != Auth::id()){
+            return $this->sendError('Unautharized.', 'You are not allowed to delete this product.');
+        }
         $product->delete();
 
         return $this->sendResponse([], 'Product deleted successfully.');
     }
+
 }
